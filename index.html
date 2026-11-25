@@ -27,16 +27,20 @@
     body {
       height: 100vh;
       height: 100dvh;
-      padding-bottom: calc(50px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
       background-attachment: fixed;
+    }
+
+    body.has-banner {
+      padding-bottom: calc(50px + env(safe-area-inset-bottom));
     }
 
     .app-container {
       width: 100%;
       max-width: 540px;
-      min-height: 100%;
+      height: 100%;
       margin: 0 auto;
-      padding: 10px 14px 6px;
+      padding: 10px 14px 10px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -47,14 +51,44 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
     }
 
     .title {
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       font-weight: 800;
-      letter-spacing: 0.5px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .difficulty-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: rgba(56, 189, 248, 0.18);
+      color: #7dd3fc;
+      border: 1px solid rgba(125, 211, 252, 0.35);
+      white-space: nowrap;
+    }
+
+    .difficulty-badge.medium {
+      background: rgba(250, 204, 21, 0.16);
+      color: #fde047;
+      border-color: rgba(253, 224, 71, 0.38);
+    }
+
+    .difficulty-badge.hard {
+      background: rgba(244, 114, 182, 0.16);
+      color: #f9a8d4;
+      border-color: rgba(249, 168, 212, 0.38);
     }
 
     select, button {
@@ -63,6 +97,7 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.1s ease, filter 0.15s ease, opacity 0.15s ease;
+      touch-action: manipulation;
     }
 
     button:active:not(:disabled) {
@@ -74,17 +109,12 @@
       cursor: not-allowed;
     }
 
-    button,
-    .level-select {
-      touch-action: manipulation;
-    }
-
     .level-select {
       background: rgba(255, 255, 255, 0.16);
       color: #fff;
-      padding: 7px 12px;
-      font-size: 0.92rem;
-      font-weight: 600;
+      padding: 6px 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
       outline: none;
       backdrop-filter: blur(6px);
     }
@@ -94,35 +124,38 @@
       color: #fff;
     }
 
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    .hud-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 8px;
       background: rgba(15, 23, 42, 0.55);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      padding: 8px 10px;
-      text-align: center;
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 0.84rem;
     }
 
-    .stat-label {
-      font-size: 0.72rem;
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       color: #cbd5e1;
+      white-space: nowrap;
     }
 
-    .stat-value {
-      font-size: 1.02rem;
-      font-weight: 800;
+    .hud-item strong {
       color: #fde047;
-      margin-top: 2px;
+      font-size: 0.95rem;
+      font-weight: 800;
     }
 
     .board-wrapper {
       position: relative;
       width: 100%;
       flex: 1 1 auto;
-      min-height: 140px;
-      background: rgba(10, 25, 47, 0.65);
+      min-height: 220px;
+      background: rgba(10, 25, 47, 0.68);
       border: 2px solid rgba(255, 255, 255, 0.16);
       border-radius: 18px;
       padding: 8px;
@@ -144,134 +177,61 @@
     }
 
     .status-toast {
-      min-height: 22px;
+      min-height: 18px;
       text-align: center;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: #fde68a;
       font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .controls-row {
+    .controls-bar {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-    }
-
-    .controls-row-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
 
     .btn-secondary {
       background: rgba(255, 255, 255, 0.16);
       color: #fff;
-      padding: 9px 8px;
-      font-size: 0.86rem;
+      padding: 8px 6px;
+      font-size: 0.82rem;
       font-weight: 700;
     }
 
     .btn-help {
       background: linear-gradient(135deg, #0ea5e9, #2563eb);
       color: #fff;
-      padding: 9px 6px;
-      font-size: 0.82rem;
+      padding: 8px 6px;
+      font-size: 0.8rem;
       font-weight: 700;
     }
 
     .btn-autoundo {
       background: linear-gradient(135deg, #8b5cf6, #6d28d9);
       color: #fff;
-      padding: 9px 6px;
-      font-size: 0.82rem;
+      padding: 8px 6px;
+      font-size: 0.8rem;
       font-weight: 700;
     }
 
     .btn-adskip {
       background: linear-gradient(135deg, #f59e0b, #ea580c);
       color: #fff;
-      padding: 9px 6px;
-      font-size: 0.82rem;
+      padding: 9px 10px;
+      font-size: 0.85rem;
       font-weight: 800;
-    }
-
-    .dpad {
-      display: grid;
-      grid-template-columns: repeat(3, 64px);
-      grid-template-rows: repeat(2, 54px);
-      gap: 6px;
-      justify-content: center;
-      margin-top: 2px;
-    }
-
-    .dpad-btn {
-      background: rgba(255, 255, 255, 0.18);
-      color: #fff;
-      font-size: 1.25rem;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-    }
-
-    .dpad-btn svg {
-      pointer-events: none;
-    }
-
-    .dpad-up { grid-column: 2; grid-row: 1; }
-    .dpad-left { grid-column: 1; grid-row: 2; }
-    .dpad-down { grid-column: 2; grid-row: 2; }
-    .dpad-right { grid-column: 3; grid-row: 2; }
-
-    .dpad-btn:active {
-      background: rgba(255, 255, 255, 0.34);
-    }
-
-    .level-banner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 0 4px;
-      margin-top: -4px;
-    }
-
-    .level-name {
-      font-size: 0.95rem;
-      font-weight: 800;
-      color: #e2e8f0;
-    }
-
-    .difficulty-badge {
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 99px;
-      background: rgba(56, 189, 248, 0.18);
-      color: #7dd3fc;
-      border: 1px solid rgba(125, 211, 252, 0.35);
-    }
-
-    .difficulty-badge.medium {
-      background: rgba(250, 204, 21, 0.16);
-      color: #fde047;
-      border-color: rgba(253, 224, 71, 0.38);
-    }
-
-    .difficulty-badge.hard {
-      background: rgba(244, 114, 182, 0.16);
-      color: #f9a8d4;
-      border-color: rgba(249, 168, 212, 0.38);
     }
 
     .badge {
       display: inline-block;
-      margin-left: 4px;
-      padding: 1px 6px;
+      margin-left: 3px;
+      padding: 1px 5px;
       border-radius: 99px;
       background: rgba(0, 0, 0, 0.28);
-      font-size: 0.66rem;
+      font-size: 0.64rem;
       font-weight: 700;
       vertical-align: middle;
       white-space: nowrap;
@@ -294,18 +254,39 @@
       filter: brightness(1.12);
     }
 
-    .footer-stars {
-      text-align: center;
-      font-size: 0.82rem;
-      color: #cbd5e1;
-      padding-bottom: 4px;
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 62px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 6px;
+      justify-content: center;
     }
 
-    .footer-stars strong {
-      color: #fde047;
+    .dpad-btn {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
     }
 
-    /* ---- ad banner (fixed, safe-area aware) ---- */
+    .dpad-btn svg {
+      pointer-events: none;
+    }
+
+    .dpad-up { grid-column: 2; grid-row: 1; }
+    .dpad-left { grid-column: 1; grid-row: 2; }
+    .dpad-down { grid-column: 2; grid-row: 2; }
+    .dpad-right { grid-column: 3; grid-row: 2; }
+
+    .dpad-btn:active {
+      background: rgba(255, 255, 255, 0.34);
+    }
+
+    /* ---- ad banner (shown only when native/active ad banner is enabled) ---- */
     .ad-banner {
       position: fixed;
       left: 0;
@@ -582,65 +563,48 @@
     }
 
     @media (max-height: 680px) {
-      .title { font-size: 1.08rem; }
-      .dpad { grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 46px); }
-      .board-wrapper { padding: 6px; }
-      .footer-stars { display: none; }
+      .title { font-size: 1.05rem; }
+      .dpad { grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 42px); }
+      .board-wrapper { padding: 6px; min-height: 170px; }
     }
 
-    @media (max-height: 620px) {
-      .app-container { gap: 6px; padding: 8px 12px 4px; }
+    @media (max-height: 600px) {
+      .app-container { gap: 6px; padding: 8px 12px 6px; }
       .status-toast { display: none; }
-      .stats-bar { padding: 5px 8px; }
-      .stat-value { font-size: 0.94rem; }
-      .title { font-size: 1rem; }
-      .btn-secondary, .btn-help, .btn-autoundo, .btn-adskip { padding: 7px 5px; }
-      .dpad { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 42px); }
+      .hud-strip { padding: 5px 10px; font-size: 0.78rem; }
+      .btn-secondary, .btn-help, .btn-autoundo { padding: 6px 4px; font-size: 0.76rem; }
+      .dpad { grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 38px); }
     }
   </style>
 </head>
 <body>
   <div class="app-container">
     <header class="header">
-      <div class="title">🐲 萌寵推龍</div>
+      <div class="title-group">
+        <div class="title">🐲 <span id="levelName">第 1 關</span></div>
+        <span class="difficulty-badge" id="difficultyBadge">入門</span>
+      </div>
       <select id="levelSelect" class="level-select" aria-label="選擇關卡"></select>
     </header>
 
-    <div class="level-banner">
-      <span class="level-name" id="levelName">第 1 關</span>
-      <span class="difficulty-badge" id="difficultyBadge">入門</span>
-    </div>
-
-    <div class="stats-bar">
-      <div>
-        <div class="stat-label">步數 / 標準</div>
-        <div class="stat-value" id="statMoves">0 / 0</div>
-      </div>
-      <div>
-        <div class="stat-label">最佳步數</div>
-        <div class="stat-value" id="statBest">--</div>
-      </div>
-      <div>
-        <div class="stat-label">星巢進度</div>
-        <div class="stat-value" id="statNests">0 / 1</div>
-      </div>
+    <div class="hud-strip">
+      <div class="hud-item">星巢 <strong id="statNests">0/1</strong></div>
+      <div class="hud-item">步數 <strong id="statMoves">0/0</strong></div>
+      <div class="hud-item">最佳 <strong id="statBest">--</strong></div>
+      <div class="hud-item">⭐<strong id="statStars">0</strong> · 🪙<strong id="statCoins">0</strong> · <strong id="statCleared">0</strong>/<span id="statTotal">30</span></div>
     </div>
 
     <div class="board-wrapper" id="boardWrapper">
       <canvas id="gameCanvas" aria-label="遊戲棋盤"></canvas>
     </div>
 
-    <div class="status-toast" id="statusToast">用方向鍵、滑動或 D-Pad 推小龍回星巢</div>
+    <div class="status-toast" id="statusToast">滑動棋盤、用方向鍵或 D-Pad 推小龍回星巢</div>
 
-    <div class="controls-row-3">
-      <button class="btn-help" id="btnHelp">幫助<span class="badge" id="helpBadge">免費 1</span></button>
-      <button class="btn-autoundo" id="btnAutoUndo">自動退一步<span class="badge" id="autoUndoBadge">免費 1</span></button>
-      <button class="btn-adskip" id="btnAdSkip">看廣告過關<span class="badge badge-ad">廣告</span></button>
-    </div>
-
-    <div class="controls-row">
+    <div class="controls-bar">
       <button class="btn-secondary" id="btnUndo">退一步</button>
       <button class="btn-secondary" id="btnReset">重設</button>
+      <button class="btn-help" id="btnHelp">幫助<span class="badge" id="helpBadge">免費 1</span></button>
+      <button class="btn-autoundo" id="btnAutoUndo">自動退<span class="badge" id="autoUndoBadge">免費 1</span></button>
     </div>
 
     <div class="dpad">
@@ -649,11 +613,10 @@
       <button class="dpad-btn dpad-down" data-dir="D" aria-label="向下">▼</button>
       <button class="dpad-btn dpad-right" data-dir="R" aria-label="向右">▶</button>
     </div>
-
-    <div class="footer-stars">⭐ <strong id="statStars">0</strong> 星星 · 🪙 <strong id="statCoins">0</strong> 金幣 · 已通關 <strong id="statCleared">0</strong>/<span id="statTotal">30</span></div>
   </div>
 
-  <div class="ad-banner" id="adBanner">
+  <!-- 預設隱藏，只喺正式啟用原生/廣告橫幅時由 game.js / adService.js 顯示 -->
+  <div class="ad-banner hidden" id="adBanner">
     <div class="ad-banner-inner" id="adBannerInner">廣告 · 支持萌寵推龍</div>
   </div>
 
@@ -675,10 +638,11 @@
   <div class="sheet hidden" id="stuckSheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">卡關了嗎？🐣</div>
-    <p class="sheet-text" id="stuckText">讓小嚮導給點提示，或自動退幾步重新想想。</p>
+    <p class="sheet-text" id="stuckText">用提示看下一步，自動退回幾步，或直接過關。</p>
     <div class="sheet-actions">
-      <button class="btn-help" id="stuckHelp">看廣告拿提示<span class="badge" id="stuckHelpBadge">免費 1</span></button>
-      <button class="btn-autoundo" id="stuckUndo">自動退 5 步<span class="badge" id="stuckUndoBadge">免費 1</span></button>
+      <button class="btn-help" id="stuckHelp"><span id="stuckHelpLabel">幫助</span><span class="badge" id="stuckHelpBadge">免費 1</span></button>
+      <button class="btn-autoundo" id="stuckUndo"><span id="stuckUndoLabel">自動退一步</span><span class="badge" id="stuckUndoBadge">免費 1</span></button>
+      <button class="btn-adskip" id="btnAdSkip">看廣告過關<span class="badge badge-ad">廣告</span></button>
       <button class="btn-ghost" id="stuckClose">繼續挑戰</button>
     </div>
   </div>

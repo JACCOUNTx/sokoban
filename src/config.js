@@ -18,22 +18,41 @@ window.DS_CONFIG = {
   ads: {
     // 'auto' uses Capacitor AdMob when available, otherwise the browser mock.
     provider: 'auto',
+    // USE_TEST_ADS: true → Google 官方測試單元；false → 正式單元（admob.prod）
+    // 需與 android/app/build.gradle 的 USE_TEST_ADS 保持一致（AndroidManifest 的 app id）
+    useTestAds: true,
     mock: {
       rewardedSeconds: 4,
       interstitialSeconds: 3,
       bannerText: '廣告 · 支持萌寵推龍',
     },
-    // Google AdMob official test unit IDs. Swap before shipping.
     admob: {
-      android: {
-        banner: 'ca-app-pub-3940256099942544/6300978111',
-        interstitial: 'ca-app-pub-3940256099942544/1033173712',
-        rewarded: 'ca-app-pub-3940256099942544/5224354917',
+      // 正式單元（USE_TEST_ADS = false）
+      prod: {
+        android: {
+          banner: 'ca-app-pub-1948382835033139/4119177474',
+          interstitial: 'ca-app-pub-1948382835033139/2623417920',
+          rewarded: 'ca-app-pub-1948382835033139/5958872754',
+        },
+        // iOS 正式 ID 未提供，暫沿用 Google 測試單元，上架前替換
+        ios: {
+          banner: 'ca-app-pub-3940256099942544/2934735716',
+          interstitial: 'ca-app-pub-3940256099942544/4411468910',
+          rewarded: 'ca-app-pub-3940256099942544/1712486757',
+        },
       },
-      ios: {
-        banner: 'ca-app-pub-3940256099942544/2934735716',
-        interstitial: 'ca-app-pub-3940256099942544/4411468910',
-        rewarded: 'ca-app-pub-3940256099942544/1712486757',
+      // Google AdMob 官方測試單元（USE_TEST_ADS = true）
+      test: {
+        android: {
+          banner: 'ca-app-pub-3940256099942544/6300978111',
+          interstitial: 'ca-app-pub-3940256099942544/1033173712',
+          rewarded: 'ca-app-pub-3940256099942544/5224354917',
+        },
+        ios: {
+          banner: 'ca-app-pub-3940256099942544/2934735716',
+          interstitial: 'ca-app-pub-3940256099942544/4411468910',
+          rewarded: 'ca-app-pub-3940256099942544/1712486757',
+        },
       },
     },
   },

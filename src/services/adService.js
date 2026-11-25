@@ -31,7 +31,10 @@ window.DSAds = (function () {
   }
 
   function unitId(kind) {
-    return cfg.admob[platform()][kind];
+    const mode = cfg.useTestAds ? 'test' : 'prod';
+    const set = cfg.admob[mode] || cfg.admob.test;
+    const units = set[platform()] || cfg.admob.test[platform()];
+    return units[kind];
   }
 
   function useNative() {
@@ -119,7 +122,7 @@ window.DSAds = (function () {
           earned = true;
         })
       );
-      await p.prepareRewardVideoAd({ adId: unitId('rewarded'), isTesting: true });
+      await p.prepareRewardVideoAd({ adId: unitId('rewarded'), isTesting: cfg.useTestAds });
       await p.showRewardVideoAd();
     } catch (err) {
       console.warn('rewarded ad failed', err);
@@ -139,7 +142,7 @@ window.DSAds = (function () {
   async function nativeInterstitial() {
     const p = plugin();
     try {
-      await p.prepareInterstitial({ adId: unitId('interstitial'), isTesting: true });
+      await p.prepareInterstitial({ adId: unitId('interstitial'), isTesting: cfg.useTestAds });
       await p.showInterstitial();
       return true;
     } catch (err) {
@@ -153,7 +156,7 @@ window.DSAds = (function () {
     if (useNative()) {
       const p = plugin();
       try {
-        await p.initialize({ initializeForTesting: true });
+        await p.initialize({ initializeForTesting: cfg.useTestAds });
       } catch (err) {
         console.warn('AdMob initialize failed', err);
       }
@@ -179,7 +182,7 @@ window.DSAds = (function () {
         position: 'BOTTOM_CENTER',
         adSize: 'BANNER',
         margin: 0,
-        isTesting: true,
+        isTesting: cfg.useTestAds,
       });
       nativeBannerShown = true;
       if (ui.banner) ui.banner.classList.add('hidden');

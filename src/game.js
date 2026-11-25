@@ -728,7 +728,6 @@
     el.btnUndo.disabled = state.history.length === 0 || state.solved;
     el.btnHelp.disabled = state.solved;
     el.btnAutoUndo.disabled = state.solved;
-    el.btnAdSkip.disabled = state.solved;
   }
 
   function badgeText(kind) {
@@ -736,15 +735,37 @@
     return left > 0 ? `免費 ${left}` : '廣告';
   }
 
+  // 卡關底欄與主畫面按鈕共用同一份每日免費額度狀態
   function updateBadges() {
-    el.helpBadge.textContent = badgeText('help');
-    el.autoUndoBadge.textContent = badgeText('autoUndo');
-    el.stuckHelpBadge.textContent = badgeText('help');
-    el.stuckUndoBadge.textContent = badgeText('autoUndo');
-    el.helpBadge.classList.toggle('is-empty', Store.freeLeft('help') <= 0);
-    el.autoUndoBadge.classList.toggle('is-empty', Store.freeLeft('autoUndo') <= 0);
-    el.stuckHelpBadge.classList.toggle('is-empty', Store.freeLeft('help') <= 0);
-    el.stuckUndoBadge.classList.toggle('is-empty', Store.freeLeft('autoUndo') <= 0);
+    const helpFree = Store.freeLeft('help');
+    const undoFree = Store.freeLeft('autoUndo');
+
+    if (el.helpBadge) {
+      el.helpBadge.textContent = badgeText('help');
+      el.helpBadge.classList.toggle('is-empty', helpFree <= 0);
+    }
+    if (el.autoUndoBadge) {
+      el.autoUndoBadge.textContent = badgeText('autoUndo');
+      el.autoUndoBadge.classList.toggle('is-empty', undoFree <= 0);
+    }
+
+    if (el.stuckHelpLabel) el.stuckHelpLabel.textContent = helpFree > 0 ? '使用免費提示' : '看廣告拿提示';
+    if (el.stuckHelpBadge) {
+      el.stuckHelpBadge.textContent = badgeText('help');
+      el.stuckHelpBadge.classList.toggle('is-empty', helpFree <= 0);
+    }
+    if (el.stuckUndoLabel) el.stuckUndoLabel.textContent = undoFree > 0 ? '免費自動退 5 步' : '看廣告自動退 5 步';
+    if (el.stuckUndoBadge) {
+      el.stuckUndoBadge.textContent = badgeText('autoUndo');
+      el.stuckUndoBadge.classList.toggle('is-empty', undoFree <= 0);
+    }
+
+    // 「看廣告過關」永遠走獎勵廣告，只跟關卡狀態連動
+    if (el.btnAdSkip) {
+      el.btnAdSkip.disabled = state.solved;
+      const adBadge = el.btnAdSkip.querySelector('.badge-ad');
+      if (adBadge) adBadge.textContent = '廣告';
+    }
   }
 
   function buildLevelSelect() {
@@ -787,11 +808,22 @@
       ? '重設了好幾次，讓小嚮導帶你走一步？'
       : '走了不少冤枉路，要不要看看下一步？';
     updateBadges();
-    el.stuckSheet.classList.remove('hidden');
+    setStuckSheetVisible(true);
+  }
+
+  function setStuckSheetVisible(visible) {
+    if (!el.stuckSheet) return;
+    el.stuckSheet.classList.toggle('hidden', !visible);
   }
 
   function hideStuck() {
-    el.stuckSheet.classList.add('hidden');
+    setStuckSheetVisible(false);
+  }
+
+  function setBannerVisible(visible) {
+    const show = Boolean(visible);
+    if (el.adBanner) el.adBanner.classList.toggle('hidden', !show);
+    document.body.classList.toggle('has-banner', show);
   }
 
   // ---------------------------------------------------------------- ads
@@ -896,6 +928,7 @@
     el.winBest.textContent = `最佳紀錄：${bestText} · 本關金幣 +${coinGain}`;
     const isLast = state.index >= LEVELS.length - 1;
     el.btnNextLevel.textContent = isLast ? '全部完成，回第 1 關' : '下一關';
+    setStuckSheetVisible(false);
     el.winModal.classList.remove('hidden');
   }
 
@@ -1090,20 +1123,35 @@
     el.stuckHelp = document.getElementById('stuckHelp');
     el.stuckUndo = document.getElementById('stuckUndo');
     el.stuckClose = document.getElementById('stuckClose');
+    el.stuckHelpLabel = document.getElementById('stuckHelpLabel');
+    el.stuckUndoLabel = document.getElementById('stuckUndoLabel');
     el.stuckHelpBadge = document.getElementById('stuckHelpBadge');
     el.stuckUndoBadge = document.getElementById('stuckUndoBadge');
+    el.adBanner = document.getElementById('adBanner');
+    el.adOverlay = document.getElementById('adOverlay');
 
     ctx = el.canvas.getContext('2d');
 
     Store.load();
     Store.refreshDaily();
     bindInputs();
+    setBannerVisible(false);
+
+    // 廣告播放器（由 adService 控制）一打開就收起卡關底欄，避免疊層
+    if (el.adOverlay && window.MutationObserver) {
+      new MutationObserver(() => {
+        if (!el.adOverlay.classList.contains('hidden')) hideStuck();
+      }).observe(el.adOverlay, { attributes: true, attributeFilter: ['class'] });
+    }
 
     const startIndex = Math.max(0, Math.min(LEVELS.length - 1, (Store.data.lastLevel || 1) - 1));
     const unlockedIndex = Math.max(0, Math.min(LEVELS.length - 1, Store.data.unlocked - 1));
     parseLevel(Math.min(startIndex, unlockedIndex));
 
-    window.DSAds.init();
+    Promise.resolve(window.DSAds.init()).then(
+      () => setBannerVisible(!window.DSAds.isNative()),
+      () => setBannerVisible(false)
+    );
 
     document.body.setAttribute('tabindex', '-1');
     document.body.focus({ preventScroll: true });
