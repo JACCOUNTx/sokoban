@@ -14,6 +14,53 @@ window.DSArt = (function () {
     ctx.closePath();
   }
 
+  // Rail path with independent end caps; connected ends stay square so neighbouring tiles join seamlessly.
+  function railPath(ctx, x, y, w, h, capLeft, capRight) {
+    const rL = capLeft ? h * 0.45 : 0;
+    const rR = capRight ? h * 0.45 : 0;
+    ctx.beginPath();
+    ctx.moveTo(x + rL, y);
+    ctx.lineTo(x + w - rR, y);
+    if (rR) {
+      ctx.arcTo(x + w, y, x + w, y + h, rR);
+      ctx.lineTo(x + w, y + h - rR);
+      ctx.arcTo(x + w, y + h, x + w - rR, y + h, rR);
+    } else {
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + h);
+    }
+    ctx.lineTo(x + rL, y + h);
+    if (rL) {
+      ctx.arcTo(x, y + h, x, y + h - rL, rL);
+      ctx.lineTo(x, y + rL);
+      ctx.arcTo(x, y, x + rL, y, rL);
+    } else {
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  }
+
+  function railStroke(ctx, x, y, w, h, capLeft, capRight) {
+    const rL = capLeft ? h * 0.45 : 0;
+    const rR = capRight ? h * 0.45 : 0;
+    ctx.beginPath();
+    ctx.moveTo(capLeft ? x + rL : x, y);
+    ctx.lineTo(capRight ? x + w - rR : x + w, y);
+    if (capRight) {
+      ctx.arcTo(x + w, y, x + w, y + h, rR);
+      ctx.lineTo(x + w, y + h - rR);
+      ctx.arcTo(x + w, y + h, x + w - rR, y + h, rR);
+    }
+    ctx.lineTo(capLeft ? x + rL : x, y + h);
+    if (capLeft) {
+      ctx.arcTo(x, y + h, x, y + h - rL, rL);
+      ctx.lineTo(x, y + rL);
+      ctx.arcTo(x, y, x + rL, y, rL);
+    }
+    ctx.stroke();
+  }
+
   function groundShadow(ctx, cx, cy, rx, ry, alpha) {
     ctx.save();
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(2, rx));
@@ -73,13 +120,19 @@ window.DSArt = (function () {
   function floor(ctx, x, y, s, r, c) {
     const alt = (r + c) % 2 === 0;
     const g = ctx.createLinearGradient(x, y, x, y + s);
-    g.addColorStop(0, alt ? 'rgba(182, 208, 160, 0.10)' : 'rgba(182, 208, 160, 0.065)');
-    g.addColorStop(1, alt ? 'rgba(120, 152, 104, 0.075)' : 'rgba(120, 152, 104, 0.045)');
+    g.addColorStop(0, alt ? '#4c6047' : '#465a42');
+    g.addColorStop(0.55, alt ? '#445741' : '#3e513c');
+    g.addColorStop(1, alt ? '#3b4d3a' : '#364836');
     ctx.fillStyle = g;
     rr(ctx, x + 1, y + 1, s - 2, s - 2, s * 0.16);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    // warm earth mottle keeps the meadow tone from looking flat
+    ctx.fillStyle = alt ? 'rgba(146, 116, 74, 0.075)' : 'rgba(146, 116, 74, 0.055)';
+    rr(ctx, x + s * 0.14, y + s * 0.52, s * 0.42, s * 0.3, s * 0.16);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     rr(ctx, x + 1.5, y + 1.5, s - 3, s - 3, s * 0.16);
     ctx.stroke();
@@ -102,27 +155,36 @@ window.DSArt = (function () {
 
     const railH = Math.max(4, s * 0.15);
     const railYs = [y + s * 0.3, y + s * 0.6];
-    const railLeft = n && n.left ? x - 1 : x + s * 0.075;
-    const railRight = n && n.right ? x + s + 1 : x + s * 0.925;
+    const leftConnected = Boolean(n && n.left);
+    const rightConnected = Boolean(n && n.right);
+    const overlap = lw * 0.7;
+    const railLeft = leftConnected ? x - overlap : x + s * 0.075;
+    const railRight = rightConnected ? x + s + overlap : x + s * 0.925;
     const railW = railRight - railLeft;
 
     for (const ry of railYs) {
-      groundShadow(ctx, railLeft + railW / 2, ry + railH + s * 0.03, railW * 0.5, s * 0.045, 0.32);
+      groundShadow(ctx, x + s / 2, ry + railH + s * 0.03, railW * 0.5, s * 0.045, 0.32);
+
       ctx.fillStyle = wood;
+      railPath(ctx, railLeft, ry, railW, railH, !leftConnected, !rightConnected);
+      ctx.fill();
+
       ctx.strokeStyle = INK;
       ctx.lineWidth = lw;
       ctx.lineJoin = 'round';
-      rr(ctx, railLeft, ry, railW, railH, railH * 0.36);
-      ctx.fill();
-      ctx.stroke();
+      ctx.lineCap = 'round';
+      railStroke(ctx, railLeft, ry, railW, railH, !leftConnected, !rightConnected);
 
-      ctx.fillStyle = 'rgba(255, 240, 205, 0.38)';
-      ctx.fillRect(railLeft + railW * 0.12, ry + railH * 0.16, railW * 0.68, Math.max(1, railH * 0.2));
-      ctx.strokeStyle = 'rgba(94, 51, 16, 0.5)';
+      const hlInset = (leftConnected ? 0 : railH * 0.45) + Math.max(1, s * 0.02);
+      const hlW = Math.max(1, railW - hlInset - ((rightConnected ? 0 : railH * 0.45) + Math.max(1, s * 0.02)));
+      ctx.fillStyle = 'rgba(255, 240, 205, 0.4)';
+      ctx.fillRect(railLeft + hlInset, ry + railH * 0.18, hlW, Math.max(1, railH * 0.2));
+
+      ctx.strokeStyle = 'rgba(94, 51, 16, 0.45)';
       ctx.lineWidth = Math.max(0.7, s * 0.012);
       ctx.beginPath();
-      ctx.moveTo(railLeft + railW * 0.1, ry + railH * 0.68);
-      ctx.lineTo(railLeft + railW * 0.72, ry + railH * 0.66);
+      ctx.moveTo(railLeft + hlInset, ry + railH * 0.7);
+      ctx.lineTo(railLeft + hlInset + hlW * 0.82, ry + railH * 0.68);
       ctx.stroke();
     }
 
@@ -147,14 +209,19 @@ window.DSArt = (function () {
     ctx.stroke();
 
     if (!(n && n.up)) {
-      const capG = ctx.createLinearGradient(postX, postTop, postX + postW, postTop + postW * 0.6);
-      capG.addColorStop(0, '#f3c88a');
+      const capG = ctx.createLinearGradient(postX, postTop - postW * 0.1, postX, postTop + postW * 0.55);
+      capG.addColorStop(0, '#f6d7a4');
       capG.addColorStop(1, '#b9762f');
       ctx.fillStyle = capG;
-      ctx.beginPath();
-      ctx.ellipse(x + s / 2, postTop + postW * 0.34, postW * 0.52, postW * 0.28, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.4, s * 0.036);
+      rr(ctx, postX - postW * 0.08, postTop - postW * 0.16, postW * 1.16, postW * 0.52, postW * 0.26);
       ctx.fill();
       ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 249, 226, 0.55)';
+      rr(ctx, postX + postW * 0.08, postTop - postW * 0.1, postW * 0.34, postW * 0.14, postW * 0.07);
+      ctx.fill();
     }
 
     ctx.fillStyle = INK_SOFT;
@@ -267,6 +334,10 @@ window.DSArt = (function () {
     const lw = Math.max(1.6, s * 0.04);
 
     ctx.save();
+    // ~75% of the tile keeps the dragon punchy on small phones
+    ctx.translate(cx, cy);
+    ctx.scale(1.12, 1.12);
+    ctx.translate(-cx, -cy);
     groundShadow(ctx, cx, y + s * 0.85, body * 1.02, s * 0.075, golden ? 0.42 : 0.34);
 
     if (golden) {
@@ -446,6 +517,9 @@ window.DSArt = (function () {
     const lw = Math.max(1.4, s * 0.034);
 
     ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1.12, 1.12);
+    ctx.translate(-cx, -cy);
     groundShadow(ctx, cx, y + s * 0.9, s * 0.24, s * 0.065, 0.4);
 
     // backpack behind torso
@@ -546,5 +620,159 @@ window.DSArt = (function () {
     ctx.restore();
   }
 
-  return { floor, fence, nest, dragon, explorer };
+  /* ------------------------------------------------------------------ */
+  /* Board renderer API: initBoardRenderer / resizeBoard / renderBoard    */
+  /* ------------------------------------------------------------------ */
+
+  let canvasEl = null;
+  let wrapperEl = null;
+  let ctx = null;
+  let getStateFn = null;
+  let tile = 32;
+  let cssW = 0;
+  let cssH = 0;
+  let dpr = 1;
+  let cache = null;
+  let lastWrapperSize = '';
+
+  const DIR_ANGLE = { U: -Math.PI / 2, D: Math.PI / 2, L: Math.PI, R: 0 };
+
+  function initBoardRenderer(options) {
+    canvasEl = options.canvas;
+    wrapperEl = options.wrapper;
+    getStateFn = options.getState;
+    ctx = canvasEl.getContext('2d');
+    resizeBoard();
+  }
+
+  function resizeBoard() {
+    if (!ctx || !wrapperEl) return;
+    const st = getStateFn();
+    if (!st || !st.w) return;
+    const pad = 20;
+    const availW = Math.max(100, wrapperEl.clientWidth - pad);
+    const availH = Math.max(100, wrapperEl.clientHeight - pad);
+    tile = Math.max(13, Math.floor(Math.min(availW / st.w, availH / st.h)));
+    cssW = tile * st.w;
+    cssH = tile * st.h;
+    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvasEl.style.width = `${cssW}px`;
+    canvasEl.style.height = `${cssH}px`;
+    canvasEl.width = Math.round(cssW * dpr);
+    canvasEl.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cache = null;
+    renderBoard(performance.now());
+  }
+
+  function buildCache(st) {
+    const layer = document.createElement('canvas');
+    layer.width = Math.round(cssW * dpr);
+    layer.height = Math.round(cssH * dpr);
+    const g = layer.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const isWall = (r, c) => r >= 0 && c >= 0 && r < st.h && c < st.w && st.walls[r * st.w + c] === 1;
+    for (let r = 0; r < st.h; r += 1) {
+      for (let c = 0; c < st.w; c += 1) {
+        const x = c * tile;
+        const y = r * tile;
+        if (isWall(r, c)) {
+          fence(g, x, y, tile, {
+            up: isWall(r - 1, c),
+            down: isWall(r + 1, c),
+            left: isWall(r, c - 1),
+            right: isWall(r, c + 1),
+          });
+        } else {
+          floor(g, x, y, tile, r, c);
+        }
+      }
+    }
+    return layer;
+  }
+
+  function drawHint(now, s, st) {
+    const hint = st.hint;
+    if (!hint || !hint.dir || now > hint.until) return;
+    const cx = ((st.player % st.w) + 0.5) * s;
+    const cy = (((st.player / st.w) | 0) + 0.5) * s;
+    const pulse = 0.55 + 0.45 * Math.sin(now / 150);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(DIR_ANGLE[hint.dir] || 0);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(1, s * 0.03);
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(253, 224, 71, 0.85)';
+    ctx.shadowBlur = s * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.44, 0);
+    ctx.lineTo(s * 0.12, -s * 0.2);
+    ctx.lineTo(s * 0.12, s * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function renderBoard(now) {
+    if (!ctx) return;
+    const st = getStateFn();
+    if (!st || !st.w) return;
+
+    if (wrapperEl) {
+      const key = `${wrapperEl.clientWidth}x${wrapperEl.clientHeight}`;
+      if (key !== lastWrapperSize) {
+        lastWrapperSize = key;
+        resizeBoard();
+        return;
+      }
+    }
+
+    const s = tile;
+    const anim = st.anim;
+    const raw = anim ? Math.min(1, (now - anim.start) / anim.dur) : 1;
+    const eased = raw >= 1 ? 1 : 1 - Math.pow(1 - raw, 3);
+
+    ctx.clearRect(0, 0, cssW, cssH);
+    if (!cache) cache = buildCache(st);
+    if (cache) ctx.drawImage(cache, 0, 0, cssW, cssH);
+
+    for (const g of st.goals) {
+      if (st.boxes.has(g)) continue;
+      nest(ctx, (g % st.w) * s, ((g / st.w) | 0) * s, s, now);
+    }
+
+    for (const b of st.boxes) {
+      let x = (b % st.w) * s;
+      let y = ((b / st.w) | 0) * s;
+      if (eased < 1 && anim && anim.boxToIdx === b && anim.boxFromIdx !== undefined) {
+        const fx = (anim.boxFromIdx % st.w) * s;
+        const fy = ((anim.boxFromIdx / st.w) | 0) * s;
+        x = fx + (x - fx) * eased;
+        y = fy + (y - fy) * eased;
+      }
+      dragon(ctx, x, y, s, st.goals.has(b), now);
+    }
+
+    {
+      let x = (st.player % st.w) * s;
+      let y = ((st.player / st.w) | 0) * s;
+      if (eased < 1 && anim && anim.playerToIdx === st.player) {
+        const px = (anim.playerFromIdx % st.w) * s;
+        const py = ((anim.playerFromIdx / st.w) | 0) * s;
+        x = px + (x - px) * eased;
+        y = py + (y - py) * eased;
+      }
+      explorer(ctx, x, y, s, now);
+    }
+
+    drawHint(now, s, st);
+  }
+
+  const DSBoard = { floor, fence, nest, dragon, explorer, initBoardRenderer, resizeBoard, renderBoard };
+  window.DSBoard = DSBoard;
+  return DSBoard;
 })();

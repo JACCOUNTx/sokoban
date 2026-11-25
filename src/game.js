@@ -4,7 +4,6 @@
   const cfg = window.DS_CONFIG;
   const LEVELS = window.DS_LEVELS;
   const DIR_VEC = { U: [-1, 0], D: [1, 0], L: [0, -1], R: [0, 1] };
-  const DIR_ANGLE = { U: -Math.PI / 2, D: Math.PI / 2, L: Math.PI, R: 0 };
   const DIR_LABEL = { U: '上', D: '下', L: '左', R: '右' };
 
   // ---------------------------------------------------------------- storage
@@ -102,19 +101,12 @@
     stuckShown: false,
     hint: { dir: null, until: 0 },
     anim: null,
-    cell: 32,
-    cssW: 0,
-    cssH: 0,
-    facing: 'D',
   };
 
   const el = {};
-  let ctx = null;
-  let dpr = 1;
+  const board = window.DSBoard;
   let toastTimer = null;
   let adBusyHint = false;
-  let lastBoardSize = '';
-  let boardCache = null;
 
   // ---------------------------------------------------------------- level load
   function parseLevel(index) {
@@ -153,7 +145,7 @@
     Store.save();
     updateLevelSelect();
     updateHud();
-    resizeCanvas();
+    board.resizeBoard();
   }
 
   function resetPositions() {
@@ -188,168 +180,10 @@
     return rows;
   }
 
-  // ---------------------------------------------------------------- sizing
-  function resizeCanvas() {
-    if (!ctx || !state.w) return;
-    const pad = 20;
-    const availW = Math.max(100, el.boardWrapper.clientWidth - pad);
-    const availH = Math.max(100, el.boardWrapper.clientHeight - pad);
-    const cell = Math.floor(Math.min(availW / state.w, availH / state.h));
-    state.cell = Math.max(13, cell);
-    state.cssW = state.cell * state.w;
-    state.cssH = state.cell * state.h;
-    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    el.canvas.style.width = `${state.cssW}px`;
-    el.canvas.style.height = `${state.cssH}px`;
-    el.canvas.width = Math.round(state.cssW * dpr);
-    el.canvas.height = Math.round(state.cssH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    boardCache = null;
-    draw(performance.now());
-  }
-
-  // ---------------------------------------------------------------- board art (see src/renderer.js)
-  const art = window.DSArt;
-
-  function drawFloor(x, y, s, r, c) {
-    if (!art) return;
-    art.floor(ctx, x, y, s, r, c);
-  }
-
-  function drawWall(x, y, s, r, c) {
-    if (!art) return;
-    const at = (rr, cc) => rr >= 0 && cc >= 0 && rr < state.h && cc < state.w && state.walls[rr * state.w + cc] === 1;
-    art.fence(ctx, x, y, s, {
-      up: at(r - 1, c),
-      down: at(r + 1, c),
-      left: at(r, c - 1),
-      right: at(r, c + 1),
-    });
-  }
-
-  function drawNest(x, y, s, t) {
-    if (!art) return;
-    art.nest(ctx, x, y, s, t);
-  }
-
-  function drawDragon(x, y, s, golden, t) {
-    if (!art) return;
-    art.dragon(ctx, x, y, s, golden, t);
-  }
-
-  function drawExplorer(x, y, s, t) {
-    if (!art) return;
-    art.explorer(ctx, x, y, s, t);
-  }
-
-  function drawHintArrow(t) {
-    const hint = state.hint;
-    if (!hint.dir || t > hint.until) return;
-    const s = state.cell;
-    const pr = (state.player / state.w) | 0;
-    const pc = state.player % state.w;
-    const x = pc * s + s / 2;
-    const y = pr * s + s / 2;
-    const pulse = 0.55 + 0.45 * Math.sin(t / 150);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(DIR_ANGLE[hint.dir]);
-    ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#fde047';
-    ctx.shadowColor = 'rgba(253, 224, 71, 0.85)';
-    ctx.shadowBlur = s * 0.3;
-    ctx.beginPath();
-    ctx.moveTo(s * 0.44, 0);
-    ctx.lineTo(s * 0.12, -s * 0.2);
-    ctx.lineTo(s * 0.12, s * 0.2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
-
-  function buildBoardCache() {
-    if (!state.cssW || !state.cssH) return null;
-    const cache = document.createElement('canvas');
-    cache.width = Math.round(state.cssW * dpr);
-    cache.height = Math.round(state.cssH * dpr);
-    const g = cache.getContext('2d');
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const prev = ctx;
-    ctx = g;
-    const s = state.cell;
-    for (let r = 0; r < state.h; r++) {
-      for (let c = 0; c < state.w; c++) {
-        const i = r * state.w + c;
-        const x = c * s;
-        const y = r * s;
-        if (state.walls[i]) drawWall(x, y, s, r, c);
-        else drawFloor(x, y, s, r, c);
-      }
-    }
-    ctx = prev;
-    return cache;
-  }
-
-  function draw(t) {
-    if (!ctx) return;
-    const s = state.cell;
-    const anim = state.anim;
-    let progress = 0;
-    if (anim) {
-      progress = Math.min(1, (t - anim.start) / anim.dur);
-      if (progress >= 1) {
-        state.anim = null;
-      } else {
-        progress = easeOutCubic(progress);
-      }
-    }
-    ctx.clearRect(0, 0, state.cssW, state.cssH);
-
-    if (!boardCache) boardCache = buildBoardCache();
-    if (boardCache) ctx.drawImage(boardCache, 0, 0, state.cssW, state.cssH);
-
-    for (const g of state.goals) {
-      if (state.boxes.has(g)) continue;
-      const r = (g / state.w) | 0;
-      const c = g % state.w;
-      drawNest(c * s, r * s, s, t);
-    }
-
-    for (const b of state.boxes) {
-      const r = (b / state.w) | 0;
-      const c = b % state.w;
-      let x = c * s;
-      let y = r * s;
-      if (state.anim && state.anim.boxTo === b) {
-        x = state.anim.boxFrom.x + (x - state.anim.boxFrom.x) * progress;
-        y = state.anim.boxFrom.y + (y - state.anim.boxFrom.y) * progress;
-      }
-      drawDragon(x, y, s, state.goals.has(b), t);
-    }
-
-    {
-      const r = (state.player / state.w) | 0;
-      const c = state.player % state.w;
-      let x = c * s;
-      let y = r * s;
-      if (state.anim && state.anim.playerTo === state.player) {
-        x = state.anim.playerFrom.x + (x - state.anim.playerFrom.x) * progress;
-        y = state.anim.playerFrom.y + (y - state.anim.playerFrom.y) * progress;
-      }
-      drawExplorer(x, y, s, t);
-    }
-
-    drawHintArrow(t);
-  }
-
   // Keeps the canvas correct even if animation frames are throttled (background tab, battery saver).
   function redrawSoon() {
-    draw(performance.now());
-    setTimeout(() => draw(performance.now()), 140);
+    board.renderBoard(performance.now());
+    setTimeout(() => board.renderBoard(performance.now()), 140);
   }
 
   let hintTicker = null;
@@ -362,16 +196,11 @@
         clearInterval(hintTicker);
         hintTicker = null;
       }
-      draw(now);
+      board.renderBoard(now);
     }, 200);
   }
 
   // ---------------------------------------------------------------- movement
-  function cellXY(i) {
-    const s = state.cell;
-    return { x: (i % state.w) * s, y: ((i / state.w) | 0) * s };
-  }
-
   function move(dir) {
     if (state.solved || !state.data) return false;
     const d = DIR_VEC[dir];
@@ -408,14 +237,19 @@
     });
     if (state.history.length > 200) state.history.shift();
 
-    const playerFrom = cellXY(state.player);
     if (boxTo !== null) {
-      const boxFrom = cellXY(target);
       state.boxes.delete(target);
       state.boxes.add(boxTo);
-      state.anim = { start: performance.now(), dur: 115, playerFrom, playerTo: target, boxFrom, boxTo };
+      state.anim = {
+        start: performance.now(),
+        dur: 115,
+        playerFromIdx: state.player,
+        playerToIdx: target,
+        boxFromIdx: target,
+        boxToIdx: boxTo,
+      };
     } else {
-      state.anim = { start: performance.now(), dur: 95, playerFrom, playerTo: target, boxFrom: null, boxTo: null };
+      state.anim = { start: performance.now(), dur: 95, playerFromIdx: state.player, playerToIdx: target };
     }
     state.player = target;
     state.moves += 1;
@@ -846,9 +680,9 @@
     el.stuckClose.addEventListener('click', hideStuck);
 
     const scheduleResize = () => {
-      resizeCanvas();
-      setTimeout(resizeCanvas, 120);
-      setTimeout(resizeCanvas, 420);
+      board.resizeBoard();
+      setTimeout(() => board.resizeBoard(), 120);
+      setTimeout(() => board.resizeBoard(), 420);
     };
     window.addEventListener('resize', scheduleResize);
     window.addEventListener('orientationchange', () => setTimeout(scheduleResize, 250));
@@ -856,7 +690,7 @@
       if (!document.hidden) scheduleResize();
     });
     if (window.ResizeObserver) {
-      const ro = new ResizeObserver(() => resizeCanvas());
+      const ro = new ResizeObserver(() => board.resizeBoard());
       ro.observe(el.boardWrapper);
     }
   }
@@ -904,7 +738,7 @@
     el.adBanner = document.getElementById('adBanner');
     el.adOverlay = document.getElementById('adOverlay');
 
-    ctx = el.canvas.getContext('2d');
+    board.initBoardRenderer({ canvas: el.canvas, wrapper: el.boardWrapper, getState: () => state });
 
     Store.load();
     Store.refreshDaily();
@@ -932,13 +766,8 @@
     window.focus();
 
     const loop = (t) => {
-      const sizeKey = `${el.boardWrapper.clientWidth}x${el.boardWrapper.clientHeight}`;
-      if (sizeKey !== lastBoardSize) {
-        lastBoardSize = sizeKey;
-        resizeCanvas();
-      }
       try {
-        draw(t);
+        board.renderBoard(t);
       } catch (err) {
         console.error('draw failed', err);
       }
