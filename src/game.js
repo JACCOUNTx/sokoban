@@ -208,268 +208,42 @@
     draw(performance.now());
   }
 
-  // ---------------------------------------------------------------- drawing helpers
-  function roundRect(x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
-    ctx.closePath();
-  }
+  // ---------------------------------------------------------------- board art (see src/renderer.js)
+  const art = window.DSArt;
 
   function drawFloor(x, y, s, r, c) {
-    const alt = (r + c) % 2 === 0;
-    ctx.fillStyle = alt ? 'rgba(125, 211, 252, 0.075)' : 'rgba(125, 211, 252, 0.045)';
-    roundRect(x + 1, y + 1, s - 2, s - 2, s * 0.18);
-    ctx.fill();
-  }
-
-  function drawFace(kind, cx, cy, s) {
-    const rad = s * 0.235;
-    const fur = ['#a9713f', '#f4e6d0', '#e8963f'][kind];
-    const ear = ['#8a5528', '#e7c9a8', '#d97b28'][kind];
-    if (kind === 1) {
-      ctx.fillStyle = ear;
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.ellipse(cx + dir * rad * 0.55, cy - rad * 1.35, rad * 0.32, rad * 0.95, dir * 0.18, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#f8b4c8';
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.ellipse(cx + dir * rad * 0.55, cy - rad * 1.3, rad * 0.14, rad * 0.6, dir * 0.18, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      ctx.fillStyle = ear;
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        if (kind === 0) {
-          ctx.arc(cx + dir * rad * 0.82, cy - rad * 0.78, rad * 0.42, 0, Math.PI * 2);
-        } else {
-          ctx.moveTo(cx + dir * rad * 0.3, cy - rad * 0.7);
-          ctx.lineTo(cx + dir * rad * 0.95, cy - rad * 1.45);
-          ctx.lineTo(cx + dir * rad * 1.0, cy - rad * 0.5);
-          ctx.closePath();
-        }
-        ctx.fill();
-      }
-    }
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
-    ctx.fill();
-    if (kind === 0) {
-      ctx.fillStyle = '#f2ddbd';
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + rad * 0.38, rad * 0.42, rad * 0.32, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#1f2937';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(cx + dir * rad * 0.36, cy - rad * 0.12, Math.max(1.1, rad * 0.13), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.beginPath();
-    if (kind === 1) {
-      ctx.ellipse(cx, cy + rad * 0.33, rad * 0.12, rad * 0.1, 0, 0, Math.PI * 2);
-    } else {
-      ctx.ellipse(cx, cy + rad * 0.36, rad * 0.2, rad * 0.14, 0, 0, Math.PI * 2);
-    }
-    ctx.fill();
-    if (kind === 2) {
-      ctx.strokeStyle = 'rgba(31, 41, 55, 0.75)';
-      ctx.lineWidth = Math.max(0.7, s * 0.012);
-      for (const dir of [-1, 1]) {
-        for (let k = -1; k <= 1; k++) {
-          ctx.beginPath();
-          ctx.moveTo(cx + dir * rad * 0.2, cy + rad * (0.3 + k * 0.12));
-          ctx.lineTo(cx + dir * rad * 1.05, cy + rad * (0.2 + k * 0.24));
-          ctx.stroke();
-        }
-      }
-    }
+    if (!art) return;
+    art.floor(ctx, x, y, s, r, c);
   }
 
   function drawWall(x, y, s, r, c) {
-    const g = ctx.createLinearGradient(x, y, x, y + s);
-    g.addColorStop(0, '#3f9c6d');
-    g.addColorStop(1, '#22684a');
-    ctx.fillStyle = g;
-    roundRect(x + s * 0.03, y + s * 0.03, s * 0.94, s * 0.94, s * 0.22);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    roundRect(x + s * 0.12, y + s * 0.1, s * 0.26, s * 0.14, s * 0.07);
-    ctx.fill();
-    drawFace((r * 7 + c * 3) % 3, x + s * 0.5, y + s * 0.56, s);
+    if (!art) return;
+    const at = (rr, cc) => rr >= 0 && cc >= 0 && rr < state.h && cc < state.w && state.walls[rr * state.w + cc] === 1;
+    art.fence(ctx, x, y, s, {
+      up: at(r - 1, c),
+      down: at(r + 1, c),
+      left: at(r, c - 1),
+      right: at(r, c + 1),
+    });
   }
 
   function drawNest(x, y, s, t) {
-    const cx = x + s / 2;
-    const cy = y + s / 2;
-    const pulse = 0.5 + 0.5 * Math.sin(t / 520);
-    ctx.save();
-    ctx.fillStyle = `rgba(251, 191, 36, ${0.07 + 0.09 * pulse})`;
-    ctx.beginPath();
-    ctx.arc(cx, cy, s * 0.36, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#c08b3a';
-    ctx.lineWidth = Math.max(1.4, s * 0.09);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + s * 0.16, s * 0.27, s * 0.15, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255, 236, 179, 0.5)';
-    ctx.lineWidth = Math.max(1, s * 0.045);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + s * 0.16, s * 0.18, s * 0.09, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    drawStar(cx, cy - s * 0.02, s * 0.15, s * 0.062, '#fde047', 0.65 + 0.35 * pulse);
-    ctx.restore();
-  }
-
-  function drawStar(cx, cy, outer, inner, color, alpha) {
-    ctx.save();
-    ctx.globalAlpha = alpha === undefined ? 1 : alpha;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const rad = i % 2 === 0 ? outer : inner;
-      const ang = -Math.PI / 2 + (i * Math.PI) / 5;
-      const px = cx + Math.cos(ang) * rad;
-      const py = cy + Math.sin(ang) * rad;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    if (!art) return;
+    art.nest(ctx, x, y, s, t);
   }
 
   function drawDragon(x, y, s, golden, t) {
-    const bob = Math.sin(t / 420 + x * 0.05) * s * 0.018;
-    const cx = x + s / 2;
-    const cy = y + s / 2 + bob;
-    const body = s * 0.34;
-    ctx.save();
-    if (golden) {
-      ctx.shadowColor = 'rgba(253, 224, 71, 0.55)';
-      ctx.shadowBlur = s * 0.35;
-    }
-    const grad = ctx.createRadialGradient(cx - body * 0.3, cy - body * 0.4, body * 0.2, cx, cy, body * 1.35);
-    if (golden) {
-      grad.addColorStop(0, '#fef3c7');
-      grad.addColorStop(0.55, '#fbbf24');
-      grad.addColorStop(1, '#d97706');
-    } else {
-      grad.addColorStop(0, '#86efac');
-      grad.addColorStop(0.55, '#4ade80');
-      grad.addColorStop(1, '#15803d');
-    }
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + s * 0.04, body, body * 0.92, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // wings
-    ctx.fillStyle = golden ? 'rgba(255, 247, 205, 0.85)' : 'rgba(187, 247, 208, 0.8)';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + dir * body * 0.55, cy - body * 0.15);
-      ctx.quadraticCurveTo(cx + dir * body * 1.35, cy - body * 0.85, cx + dir * body * 0.95, cy + body * 0.32);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // horns
-    ctx.fillStyle = golden ? '#b45309' : '#065f46';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(cx + dir * body * 0.32, cy - body * 0.74);
-      ctx.lineTo(cx + dir * body * 0.6, cy - body * 1.2);
-      ctx.lineTo(cx + dir * body * 0.66, cy - body * 0.66);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    // eyes
-    ctx.fillStyle = '#0f172a';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(cx + dir * body * 0.36, cy - body * 0.16, Math.max(1.2, body * 0.14), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(cx + dir * body * 0.36 + body * 0.05, cy - body * 0.22, Math.max(0.8, body * 0.05), 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // snout + belly
-    ctx.fillStyle = golden ? 'rgba(255, 250, 224, 0.9)' : 'rgba(220, 252, 231, 0.9)';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + body * 0.35, body * 0.5, body * 0.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
-    ctx.lineWidth = Math.max(0.8, s * 0.014);
-    ctx.beginPath();
-    ctx.arc(cx, cy + body * 0.18, body * 0.26, 0.2, Math.PI - 0.2);
-    ctx.stroke();
-    ctx.restore();
+    if (!art) return;
+    art.dragon(ctx, x, y, s, golden, t);
   }
 
   function drawExplorer(x, y, s, t) {
-    const bob = Math.sin(t / 380) * s * 0.016;
-    const cx = x + s / 2;
-    const cy = y + s / 2 + bob;
-    ctx.save();
-    // shadow
-    ctx.fillStyle = 'rgba(2, 6, 23, 0.35)';
-    ctx.beginPath();
-    ctx.ellipse(cx, y + s * 0.9, s * 0.26, s * 0.08, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // backpack
-    ctx.fillStyle = '#b45309';
-    roundRect(cx - s * 0.26, cy - s * 0.02, s * 0.16, s * 0.3, s * 0.07);
-    ctx.fill();
-    // body
-    const g = ctx.createLinearGradient(cx, cy, cx, cy + s * 0.4);
-    g.addColorStop(0, '#38bdf8');
-    g.addColorStop(1, '#0369a1');
-    ctx.fillStyle = g;
-    roundRect(cx - s * 0.2, cy + s * 0.04, s * 0.4, s * 0.32, s * 0.11);
-    ctx.fill();
-    // head
-    ctx.fillStyle = '#fcd9b6';
-    ctx.beginPath();
-    ctx.arc(cx, cy - s * 0.12, s * 0.19, 0, Math.PI * 2);
-    ctx.fill();
-    // hat
-    ctx.fillStyle = '#a16207';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - s * 0.24, s * 0.29, s * 0.09, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ca8a04';
-    ctx.beginPath();
-    ctx.arc(cx, cy - s * 0.26, s * 0.16, Math.PI, Math.PI * 2);
-    ctx.fill();
-    // eyes
-    ctx.fillStyle = '#0f172a';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(cx + dir * s * 0.07, cy - s * 0.1, Math.max(1, s * 0.032), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    if (!art) return;
+    art.explorer(ctx, x, y, s, t);
   }
 
-  function drawHintArrow(t) {    const hint = state.hint;
+  function drawHintArrow(t) {
+    const hint = state.hint;
     if (!hint.dir || t > hint.until) return;
     const s = state.cell;
     const pr = (state.player / state.w) | 0;
