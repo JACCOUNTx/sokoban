@@ -15,7 +15,7 @@
 
   function defaultStore() {
     return {
-      version: 1,
+      version: 2,
       unlocked: 1,
       lastLevel: 1,
       progress: {},
@@ -42,11 +42,22 @@
         this.data.progress = parsed.progress || {};
         this.data.quota = Object.assign({ date: todayKey(), help: 0, autoUndo: 0 }, parsed.quota);
         this.data.ads = Object.assign({ lastInterstitialAt: 0, levelsSinceInterstitial: 0 }, parsed.ads);
-        this.data.unlocked = Math.max(1, Math.min(LEVELS.length, this.data.unlocked || 1));
+        this.migrate(parsed);
       } catch (err) {
         console.warn('storage load failed', err);
         this.data = defaultStore();
       }
+    },
+    migrate(parsed) {
+      const fromVersion = Math.max(1, Number(parsed && parsed.version) || 1);
+      const before = `${this.data.version}|${this.data.unlocked}`;
+      const record = this.data.progress && this.data.progress['30'];
+      if (record) {
+        this.data.unlocked = Math.max(this.data.unlocked || 1, Math.min(LEVELS.length, 31));
+      }
+      this.data.version = 2;
+      this.data.unlocked = Math.max(1, Math.min(LEVELS.length, this.data.unlocked || 1));
+      if (fromVersion < 2 || `${this.data.version}|${this.data.unlocked}` !== before) this.save();
     },
     save() {
       try {
@@ -297,6 +308,8 @@
 
   function resetLevel(userInitiated) {
     if (!state.data) return;
+    setWinModalVisible(false);
+    hideStuck();
     resetPositions();
     if (userInitiated) state.resetCount += 1;
     updateHud();
@@ -428,6 +441,21 @@
     setStuckSheetVisible(false);
   }
 
+  // Win modal owns the reset/level controls so the board cannot mutate behind it.
+  function setWinModalVisible(visible) {
+    const show = Boolean(visible);
+    if (el.winModal) el.winModal.classList.toggle('hidden', !show);
+    if (el.btnReset) el.btnReset.disabled = show;
+    if (el.levelSelect) el.levelSelect.disabled = show;
+  }
+
+  // Native AdMob banners live above the WebView; reserve room so the D-Pad stays tappable.
+  function setNativeBannerSpace(active) {
+    const on = Boolean(active);
+    document.body.classList.toggle('native-banner-active', on);
+    document.body.style.paddingBottom = on ? 'calc(56px + env(safe-area-inset-bottom))' : '';
+  }
+
   function setBannerVisible(visible) {
     const show = Boolean(visible);
     if (el.adBanner) el.adBanner.classList.toggle('hidden', !show);
@@ -447,29 +475,62 @@
     return ok;
   }
 
+  const HINT_MAX_NODES = 200000;
+  const HINT_SLOW_MS = 120;
+
   async function runHint() {
-    if (adBusyHint || state.solved) return;
+    if (adBusyHint || state.solved) return false;
     adBusyHint = true;
     hideStuck();
     showToast('小嚮導正在尋找下一步…', 900);
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    const res = window.DSSolver.solve(currentRows(), { maxNodes: 200000 });
-    adBusyHint = false;
-    if (!res || !res.moves) {
-      showToast('這關已經沒有更快的提示了，再試試看！');
-      return;
+    const levelIndex = state.index;
+    let res = null;
+    let elapsed = 0;
+    let failed = false;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const started = performance.now();
+      try {
+        res = window.DSSolver.solve(currentRows(), { maxNodes: HINT_MAX_NODES });
+      } catch (err) {
+        console.warn('hint solve failed', err);
+        res = null;
+        failed = true;
+      } finally {
+        elapsed = performance.now() - started;
+      }
+    } finally {
+      adBusyHint = false;
+    }
+    if (state.index !== levelIndex || state.solved) return false;
+    if (!res || !res.moves || !res.moves.length) {
+      if (failed) showToast('提示搜尋出錯，請再試一次');
+      else if (elapsed >= HINT_SLOW_MS) showToast('提示搜尋超出節點上限／逾時，請重試');
+      else showToast('這一關找不到可行的下一步');
+      return false;
     }
     state.hint = { dir: res.moves[0], until: performance.now() + 4500 };
     startHintTicker();
     redrawSoon();
     showToast(`提示：往「${DIR_LABEL[res.moves[0]]}」移動`, 2200);
+    return true;
   }
 
   async function useHelp() {
-    if (state.solved) return;
-    const ok = await consumeOrWatch('help');
-    if (!ok) return;
-    await runHint();
+    if (state.solved || window.DSAds.isBusy()) return;
+    const useFree = Store.freeLeft('help') > 0;
+    if (!useFree) {
+      const ok = await window.DSAds.showRewarded();
+      if (!ok) {
+        showToast('廣告未完成，未獲得獎勵');
+        return;
+      }
+    }
+    const hinted = await runHint();
+    if (!hinted || !useFree) return;
+    Store.data.quota.help = (Store.data.quota.help || 0) + 1;
+    Store.save();
+    updateBadges();
   }
 
   async function useAutoUndo() {
@@ -537,15 +598,28 @@
     const isLast = state.index >= LEVELS.length - 1;
     el.btnNextLevel.textContent = isLast ? '全部完成，回第 1 關' : '下一關';
     setStuckSheetVisible(false);
-    el.winModal.classList.remove('hidden');
+    setWinModalVisible(true);
   }
 
   async function nextLevel() {
-    el.winModal.classList.add('hidden');
-    const target = state.index >= LEVELS.length - 1 ? 0 : state.index + 1;
+    if (window.DSAds.isBusy()) {
+      showToast('廣告播放中，請稍候');
+      return;
+    }
+    const currentIndex = state.index;
+    const target = currentIndex >= LEVELS.length - 1 ? 0 : currentIndex + 1;
+    setWinModalVisible(false);
     await maybeShowInterstitial(target + 1);
-    parseLevel(target);
-    showToast(`第 ${target + 1} 關 · ${LEVELS[target].name}`, 1500);
+    if (window.DSAds.isBusy()) return;
+    const selected = Number(el.levelSelect.value);
+    const picked = Number.isInteger(selected) &&
+      selected !== currentIndex &&
+      selected >= 0 &&
+      selected < LEVELS.length
+      ? selected
+      : target;
+    parseLevel(picked);
+    showToast(`第 ${picked + 1} 關 · ${LEVELS[picked].name}`, 1500);
   }
 
   async function maybeShowInterstitial(levelNumber) {
@@ -554,7 +628,8 @@
     const ads = Store.data.ads;
     if ((ads.levelsSinceInterstitial || 0) < rules.everyNLevels) return;
     if (Date.now() - (ads.lastInterstitialAt || 0) < rules.cooldownMs) return;
-    await window.DSAds.showInterstitial();
+    const shown = await window.DSAds.showInterstitial();
+    if (!shown) return;
     Store.data.ads.lastInterstitialAt = Date.now();
     Store.data.ads.levelsSinceInterstitial = 0;
     Store.save();
@@ -562,12 +637,17 @@
 
   function goToLevel(index) {
     if (index < 0 || index >= LEVELS.length) return;
+    if (window.DSAds.isBusy()) {
+      showToast('廣告播放中，請稍候');
+      el.levelSelect.value = String(state.index);
+      return;
+    }
     if (index + 1 > Store.data.unlocked) {
       showToast('先完成前面的關卡才能解鎖');
       el.levelSelect.value = String(state.index);
       return;
     }
-    el.winModal.classList.add('hidden');
+    setWinModalVisible(false);
     hideStuck();
     parseLevel(index);
     showToast(`第 ${index + 1} 關 · ${LEVELS[index].name}`, 1400);
@@ -643,17 +723,22 @@
     el.btnReset.addEventListener('click', () => resetLevel(true));
 
     el.levelSelect.addEventListener('change', () => {
+      if (window.DSAds.isBusy()) {
+        showToast('廣告播放中，請稍候');
+        el.levelSelect.value = String(state.index);
+        return;
+      }
       goToLevel(Number(el.levelSelect.value));
     });
 
     el.btnNextLevel.addEventListener('click', nextLevel);
     el.btnReplay.addEventListener('click', () => {
-      el.winModal.classList.add('hidden');
+      setWinModalVisible(false);
       parseLevel(state.index);
       showToast('再試一次！', 1200);
     });
     el.btnOpenLevels.addEventListener('click', () => {
-      el.winModal.classList.add('hidden');
+      setWinModalVisible(false);
       if (window.CSS && CSS.supports && CSS.supports('selector(:focus-visible)')) {
         el.levelSelect.focus({ preventScroll: false });
       } else {
@@ -757,8 +842,15 @@
     parseLevel(Math.min(startIndex, unlockedIndex));
 
     Promise.resolve(window.DSAds.init()).then(
-      () => setBannerVisible(!window.DSAds.isNative()),
-      () => setBannerVisible(false)
+      () => {
+        const native = window.DSAds.isNative();
+        setBannerVisible(!native);
+        setNativeBannerSpace(native);
+      },
+      () => {
+        setBannerVisible(false);
+        setNativeBannerSpace(false);
+      }
     );
 
     document.body.setAttribute('tabindex', '-1');
