@@ -35,6 +35,15 @@
       padding-bottom: calc(50px + env(safe-area-inset-bottom));
     }
 
+    /* Native AdMob banner renders above the WebView; reserve room inside the layout. */
+    body.native-banner-active {
+      padding-bottom: 0 !important;
+    }
+
+    body.native-banner-active .app-container {
+      padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    }
+
     .app-container {
       width: 100%;
       max-width: 540px;
@@ -329,6 +338,58 @@
       padding: 0 3px;
     }
 
+    /* ---- privacy ---- */
+    .privacy-footer {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 2px 0 0;
+    }
+
+    .privacy-sep {
+      color: rgba(148, 163, 184, 0.55);
+      font-size: 0.72rem;
+      line-height: 1;
+    }
+
+    .privacy-link {
+      background: none;
+      border: 0;
+      color: rgba(148, 163, 184, 0.92);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .privacy-link:active {
+      color: #e2e8f0;
+    }
+
+    .privacy-modal .privacy-body {
+      max-height: 44vh;
+      overflow-y: auto;
+      text-align: left;
+      padding-right: 4px;
+      margin: 6px 0 0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .privacy-modal .privacy-body .modal-text {
+      margin: 0 0 10px;
+      line-height: 1.6;
+    }
+
+    .privacy-modal .privacy-body a {
+      color: #7dd3fc;
+      text-decoration: underline;
+    }
+
     /* ---- overlays ---- */
     .hidden {
       display: none !important;
@@ -591,7 +652,7 @@
       <div class="hud-item">星巢 <strong id="statNests">0/1</strong></div>
       <div class="hud-item">步數 <strong id="statMoves">0/0</strong></div>
       <div class="hud-item">最佳 <strong id="statBest">--</strong></div>
-      <div class="hud-item">⭐<strong id="statStars">0</strong> · 🪙<strong id="statCoins">0</strong> · <strong id="statCleared">0</strong>/<span id="statTotal">30</span></div>
+      <div class="hud-item">⭐<strong id="statStars">0</strong> · 🪙<strong id="statCoins">0</strong> · <strong id="statCleared">0</strong>/<span id="statTotal">--</span></div>
     </div>
 
     <div class="board-wrapper" id="boardWrapper">
@@ -613,6 +674,12 @@
       <button class="dpad-btn dpad-down" data-dir="D" aria-label="向下">▼</button>
       <button class="dpad-btn dpad-right" data-dir="R" aria-label="向右">▶</button>
     </div>
+
+    <footer class="privacy-footer">
+      <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">隱私政策</a>
+      <span class="privacy-sep" aria-hidden="true">·</span>
+      <button class="privacy-link" id="privacyOpen" type="button">政策摘要</button>
+    </footer>
   </div>
 
   <!-- 預設隱藏，只喺正式啟用原生/廣告橫幅時由 game.js / adService.js 顯示 -->
@@ -656,6 +723,21 @@
     <div class="ad-note">模擬廣告 · 正式版本由 AdMob 提供</div>
   </div>
 
+  <div class="modal-backdrop hidden" id="privacyModal" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="modal privacy-modal">
+      <h2 id="privacyTitle">隱私政策</h2>
+      <p class="modal-text small">最後更新：2026-11-26</p>
+      <div class="privacy-body">
+        <p class="modal-text">本遊戲不需註冊帳號，也不收集姓名、電郵或聯絡資料。遊戲進度、星級、金幣與每日免費額度只儲存在你的裝置（localStorage）；移除 App 或清除資料後即會消失。</p>
+        <p class="modal-text">廣告由 Google AdMob 提供。AdMob 可能依你的同意狀態使用裝置識別碼及近似位置，用於放送、衡量及個人化廣告。你可於裝置的廣告設定重設或刪除廣告 ID；iOS 可於「設定 › 隱私權與安全性 › 追蹤」調整。</p>
+        <p class="modal-text">如適用地區規範，首次啟動會顯示同意表單；你亦可隨時在系統設定變更選擇。若對本政策有疑問，請電郵 <a href="mailto:info@marlleegroup.com">info@marlleegroup.com</a> 與我們聯絡。</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="privacyClose" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <div class="float-toast" id="floatToast"></div>
 
   <script src="src/config.js"></script>
@@ -664,5 +746,49 @@
   <script src="src/renderer.js"></script>
   <script src="src/services/adService.js"></script>
   <script src="src/game.js"></script>
+
+  <script>
+    (function () {
+      var modal = document.getElementById('privacyModal');
+      var openBtn = document.getElementById('privacyOpen');
+      var closeBtn = document.getElementById('privacyClose');
+      if (!modal || !openBtn || !closeBtn) return;
+
+      var BLOCKED_KEYS = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'w', 'a', 's', 'd', 'W', 'A', 'S', 'D', 'z', 'Z', 'r', 'R'
+      ];
+
+      function isOpen() {
+        return !modal.classList.contains('hidden');
+      }
+
+      function openPrivacy() {
+        modal.classList.remove('hidden');
+        closeBtn.focus({ preventScroll: true });
+      }
+
+      function closePrivacy() {
+        modal.classList.add('hidden');
+        openBtn.focus({ preventScroll: true });
+      }
+
+      openBtn.addEventListener('click', openPrivacy);
+      closeBtn.addEventListener('click', closePrivacy);
+      modal.addEventListener('click', function (event) {
+        if (event.target === modal) closePrivacy();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (!isOpen()) return;
+        event.stopPropagation();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closePrivacy();
+          return;
+        }
+        if (BLOCKED_KEYS.indexOf(event.key) !== -1) event.preventDefault();
+      }, true);
+    })();
+  </script>
 </body>
 </html>

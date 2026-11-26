@@ -3,7 +3,9 @@
 // then this module picks up window.Capacitor.Plugins.AdMob automatically.
 window.DSAds = (function () {
   const cfg = window.DS_CONFIG.ads;
+  const NATIVE_REWARD_TIMEOUT_MS = 30000;
   let busy = false;
+  let nativeReady = false;
   let dom = null;
   let nativeBannerShown = false;
 
@@ -37,8 +39,12 @@ window.DSAds = (function () {
     return units[kind];
   }
 
-  function useNative() {
+  function hasPlugin() {
     return cfg.provider !== 'mock' && !!plugin();
+  }
+
+  function useNative() {
+    return nativeReady && hasPlugin();
   }
 
   function ensureDom() {
@@ -116,27 +122,70 @@ window.DSAds = (function () {
     const p = plugin();
     let earned = false;
     const listeners = [];
-    try {
-      listeners.push(
-        await p.addListener('onRewardedVideoAdReward', () => {
-          earned = true;
-        })
-      );
-      await p.prepareRewardVideoAd({ adId: unitId('rewarded'), isTesting: cfg.useTestAds });
-      await p.showRewardVideoAd();
-    } catch (err) {
-      console.warn('rewarded ad failed', err);
-      earned = false;
-    } finally {
-      for (const l of listeners) {
+    return new Promise((resolve) => {
+      let settled = false;
+      let guardTimer = null;
+
+      const removeListener = (listener) => {
         try {
-          await l.remove();
+          const result = listener && listener.remove ? listener.remove() : null;
+          if (result && typeof result.catch === 'function') result.catch(() => {});
         } catch (err) {
           /* ignore */
         }
-      }
-    }
-    return earned;
+      };
+
+      const track = (listener) => {
+        if (settled) removeListener(listener);
+        else listeners.push(listener);
+        return listener;
+      };
+
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        if (guardTimer) clearTimeout(guardTimer);
+        for (const listener of listeners) removeListener(listener);
+        listeners.length = 0;
+        resolve(value);
+      };
+
+      // Never let a stuck plugin hold the busy lock forever.
+      guardTimer = setTimeout(() => {
+        console.warn('rewarded ad timeout');
+        settle(earned);
+      }, NATIVE_REWARD_TIMEOUT_MS);
+
+      (async () => {
+        try {
+          track(
+            await p.addListener('onRewardedVideoAdReward', () => {
+              earned = true;
+            })
+          );
+          // Listeners stay mounted until dismissal/failure; never removed on show() resolve.
+          track(
+            await p.addListener('onRewardedVideoAdDismissed', () => {
+              settle(earned);
+            })
+          );
+          track(
+            await p.addListener('onRewardedVideoAdFailedToShow', () => {
+              settle(false);
+            })
+          );
+          if (settled) return;
+          await p.prepareRewardVideoAd({ adId: unitId('rewarded'), isTesting: cfg.useTestAds });
+          await p.showRewardVideoAd();
+          // Some plugin versions resolve on dismissal without emitting the dismissed event.
+          // Only safe to settle early once the reward has actually been granted.
+          if (earned) setTimeout(() => settle(true), 800);
+        } catch (err) {
+          console.warn('rewarded ad failed', err);
+          settle(false);
+        }
+      })();
+    });
   }
 
   async function nativeInterstitial() {
@@ -151,15 +200,48 @@ window.DSAds = (function () {
     }
   }
 
+  async function requestConsent(p) {
+    if (!p) return;
+    const tasks = [];
+    const attempt = (label, fn) => {
+      try {
+        tasks.push(Promise.resolve(fn()).catch((err) => console.warn(`${label} failed`, err)));
+      } catch (err) {
+        console.warn(`${label} failed`, err);
+      }
+    };
+    if (typeof p.requestConsentInfo === 'function') {
+      attempt('consent info', async () => {
+        const info = await p.requestConsentInfo();
+        if (info && info.isConsentFormAvailable && typeof p.showConsentFormIfRequired === 'function') {
+          await p.showConsentFormIfRequired();
+        }
+      });
+    } else if (typeof p.showConsentFormIfRequired === 'function') {
+      attempt('consent form', () => p.showConsentFormIfRequired());
+    }
+    if (typeof p.requestTrackingAuthorization === 'function') {
+      attempt('ATT request', () => p.requestTrackingAuthorization());
+    }
+    if (!tasks.length) return;
+    await Promise.allSettled(tasks);
+  }
+
   async function init() {
     const ui = ensureDom();
-    if (useNative()) {
-      const p = plugin();
+    const p = plugin();
+    nativeReady = false;
+    if (hasPlugin()) {
       try {
+        await requestConsent(p);
         await p.initialize({ initializeForTesting: cfg.useTestAds });
+        nativeReady = true;
       } catch (err) {
         console.warn('AdMob initialize failed', err);
+        nativeReady = false;
       }
+    }
+    if (useNative()) {
       if (ui.banner) ui.banner.classList.add('hidden');
       showBanner();
     } else if (ui.bannerInner) {

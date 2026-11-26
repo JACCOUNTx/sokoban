@@ -1,0 +1,6 @@
+# Local scratch / reference material (not deployed)
+refer/
+
+# OS / editor noise
+Thumbs.db
+.DS_Store

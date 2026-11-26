@@ -321,10 +321,14 @@
   }
 
   // ---------------------------------------------------------------- HUD
+  // 以龍數（箱數）＋標準步數估算難度，插入新關卡亦不會影響標籤
   function difficultyOf(index) {
-    const n = index + 1;
-    if (n <= 3) return { label: '入門', cls: '' };
-    if (n <= 15) return { label: '進階', cls: 'medium' };
+    const lv = LEVELS[index] || {};
+    const dragons = Math.max(1, Number(lv.boxes) || 1);
+    const par = Math.max(1, Number(lv.parMoves) || 1);
+    const load = dragons * 12 + par;
+    if (load <= 30) return { label: '入門', cls: '' };
+    if (load <= 70) return { label: '進階', cls: 'medium' };
     return { label: '挑戰', cls: 'hard' };
   }
 
@@ -451,9 +455,7 @@
 
   // Native AdMob banners live above the WebView; reserve room so the D-Pad stays tappable.
   function setNativeBannerSpace(active) {
-    const on = Boolean(active);
-    document.body.classList.toggle('native-banner-active', on);
-    document.body.style.paddingBottom = on ? 'calc(56px + env(safe-area-inset-bottom))' : '';
+    document.body.classList.toggle('native-banner-active', Boolean(active));
   }
 
   function setBannerVisible(visible) {
