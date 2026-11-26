@@ -20,7 +20,7 @@ window.DS_CONFIG = {
     provider: 'auto',
     // USE_TEST_ADS: true → Google 官方測試單元；false → 正式單元（admob.prod）
     // 需與 android/app/build.gradle 的 USE_TEST_ADS 保持一致（AndroidManifest 的 app id）
-    useTestAds: true,
+    useTestAds: false,
     mock: {
       rewardedSeconds: 4,
       interstitialSeconds: 3,
@@ -34,11 +34,10 @@ window.DS_CONFIG = {
           interstitial: 'ca-app-pub-1948382835033139/2623417920',
           rewarded: 'ca-app-pub-1948382835033139/5958872754',
         },
-        // iOS 正式 ID 未提供，暫沿用 Google 測試單元，上架前替換
         ios: {
-          banner: 'ca-app-pub-3940256099942544/2934735716',
-          interstitial: 'ca-app-pub-3940256099942544/4411468910',
-          rewarded: 'ca-app-pub-3940256099942544/1712486757',
+          banner: 'ca-app-pub-1948382835033139/3740062625',
+          interstitial: 'ca-app-pub-1948382835033139/2909041738',
+          rewarded: 'ca-app-pub-1948382835033139/4454378492',
         },
       },
       // Google AdMob 官方測試單元（USE_TEST_ADS = true）
