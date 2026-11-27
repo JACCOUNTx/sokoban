@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">萌寵推龍 · 倉庫番</string>
+    <string name="title_activity_main">萌寵推龍 · 倉庫番</string>
+    <string name="package_name">com.marlleegroup.sokoban</string>
+    <string name="custom_url_scheme">com.marlleegroup.sokoban</string>
+</resources>

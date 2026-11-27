@@ -1,6 +1,20 @@
 # Local scratch / reference material (not deployed)
 refer/
 
+# Capacitor / native build output
+node_modules/
+www/
+android/local.properties
+android/keystore.properties
+*.jks
+*.keystore
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/app/release/
+android/capacitor-cordova-android-plugins/build/
+
 # OS / editor noise
 Thumbs.db
 .DS_Store
