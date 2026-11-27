@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    position: relative;
+    background:
+      radial-gradient(circle at 12% 12%, rgba(125, 211, 252, 0.2), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(253, 224, 71, 0.14), transparent 45%),
+      linear-gradient(150deg, #1b2a4a 0%, #2d1b4e 58%, #16324f 100%);
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    color: #e2e8f0;
+  }
+  .copy {
+    position: absolute;
+    left: 64px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 560px;
+  }
+  .eyebrow {
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: #7dd3fc;
+    margin-bottom: 18px;
+    font-weight: 700;
+  }
+  h1 {
+    margin: 0;
+    font-size: 76px;
+    line-height: 1.05;
+    color: #fde047;
+    letter-spacing: 2px;
+    text-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  }
+  .sub {
+    margin-top: 14px;
+    font-size: 30px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .tags {
+    margin-top: 26px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 19px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(125, 211, 252, 0.14);
+    border: 1px solid rgba(125, 211, 252, 0.4);
+    color: #bae6fd;
+  }
+  .art {
+    position: absolute;
+    right: 46px;
+    top: 50%;
+    transform: translateY(-50%) rotate(4deg);
+    width: 372px;
+    padding: 9px;
+    border-radius: 42px;
+    background: linear-gradient(150deg, rgba(255,255,255,0.26), rgba(255,255,255,0.05));
+    box-shadow: 0 24px 46px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .art img { display: block; width: 100%; border-radius: 34px; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="eyebrow">益智推箱 · 萌寵冒險</div>
+    <h1>萌寵推龍</h1>
+    <div class="sub">倉庫番 · 54 個關卡</div>
+    <div class="tags">
+      <span class="tag">離線可玩</span>
+      <span class="tag">免註冊</span>
+      <span class="tag">每日免費提示</span>
+    </div>
+  </div>
+  <div class="art"><img src="board.png" alt="" /></div>
+</body>
+</html>

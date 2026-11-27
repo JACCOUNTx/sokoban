@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 512px; height: 512px; overflow: hidden; }
+  body {
+    background:
+      radial-gradient(circle at 22% 18%, rgba(125, 211, 252, 0.22), transparent 42%),
+      radial-gradient(circle at 82% 84%, rgba(253, 224, 71, 0.16), transparent 45%),
+      linear-gradient(160deg, #1b2a4a 0%, #2d1b4e 55%, #16324f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+  }
+  .frame {
+    position: relative;
+    width: 404px;
+    padding: 10px;
+    border-radius: 64px;
+    background: linear-gradient(150deg, rgba(255,255,255,0.28), rgba(255,255,255,0.06));
+    box-shadow: 0 26px 52px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.4);
+    transform: rotate(-4deg);
+  }
+  .frame img {
+    display: block;
+    width: 100%;
+    border-radius: 54px;
+  }
+  .star {
+    position: absolute;
+    right: -26px;
+    bottom: -18px;
+    width: 122px;
+    height: 122px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #fff3b0, #fde047 55%, #f59e0b 100%);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), inset 0 -6px 12px rgba(180, 83, 9, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 68px;
+    color: #7c2d12;
+    transform: rotate(6deg);
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <img src="board.png" alt="" />
+    <div class="star">★</div>
+  </div>
+</body>
+</html>
